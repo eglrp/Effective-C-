@@ -1,0 +1,14 @@
+class NightDanceBarCustomer
+{
+ // Big mistake!!
+ public:
+ 	int age;
+	
+};
+
+int main()
+{
+ NightDanceBarCustomer a;
+ //A 10 year kid is a night dance bar customer!
+ a.age = 10;
+}
