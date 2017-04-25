@@ -1,1 +1,39 @@
+#include <iostream>
+#include <string>
+using namespace std;
+
+class Animal
+{
+ public:
+	// Destructor declared virtual
+ 	virtual ~Animal() = 0;
+	virtual void makeSound()=0;
+ private:
+ 	int age;	
+	
+};
+
+// See Notes at the end
+Animal::~Animal() {}
+
+class Dog : public Animal
+{
+ public:
+ 	Dog():str("Wow Wow") {}
+	void makeSound() { cout << str << endl;}
+ private:
+ 	string str;
+};
+
+int main()
+{
+ // Base class pointer to a derived class object
+ Animal *a1 = new Dog();
+ 
+ a1->makeSound();
+
+ // See Notes below
+ delete a1;
+ a1 = NULL;
+}
 
