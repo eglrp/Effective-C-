@@ -1,1 +1,145 @@
+宏定义#define发生在预编译期，而const，enum定义的常量发生在编译期，两者的重要差别在于编译期里的变量是进符号表的，而预编译期的宏是简单的替换，不进符号表。因此，const, enum定义的常量具有以下优势：
+(1)支持类型检查，其实在Visual Studio编译器也已经对宏也引入了类型检查了，但不是所有的编译器都这样；
+(2)支持访问权限
+第(2)条优势是指可以把这些常量放在类中，从而避免了全局的作用域，而宏定义只能是全局的（全局变量在多线程中容易出问题，一份优秀的代码里是几乎不出现全局变量的），所以这条优势其实是const和enum替换宏定义最好的理由。在书中还提到了，用const和enum定义的常量名还会出现在编译器的提示信息里，而宏定义在编译器中显示的就不是宏定义名了，而直接是一个数字量了，这样就不方便调试了。
+（3）使用常量肯比使用#define较少的代码量，因为预处理盲目的将宏名称替换一个数字，出现多分数字
+注意，定义一个常量的char*字符串
+const char* const authorNmae=“scott Meyer”；
+用string代替
+const string authorName（“Scott Meyer”）；
+2.class专属常量，常量的作用域限制在class内，必须使他成为class一个成员，确保只要一份拷贝，声明称static；
+class GamePlayer
+{
+  static const int NumTurns=5;//声明非定义如果是class并且又是static可以例外，只声明
+  int scores[NumTurns]; 
+}
+我们无法利用#define为class创建专属常量，因为他不重视作用域
+可以用枚举替代
+class gamePler
+{
+private:
+enum{numTurns=5};
+int scores[NumTurns];
+}
+enum hack法则，他比较像#define ，不能去地址
+第二部分：用inline替换带参的宏
 
+不带参的宏还说得过，带参的宏本身就是一个坑，可谓是bug四伏，一个不小心，就掉坑里了。举个最简单的例子：
+
+#define square(a) a * a
+
+在main函数中调用时，可能会这样square(3)，计算的是3的平方，这是OK的，但如果换成是square(1+2)，计算的还是3的平方吗？注意这时编译器解释成1 + 2 * 1 + 2，这样2 * 1的优先级高一些，所以先做了，这就出问题了。
+
+好的，这是常见的错误，有些程序员可能认为多加括号就行，比如：
+
+#define square(a) (a) * (a)
+
+这的确可以避免上面所说的优先级的问题，但万一调用时是这样写的呢？
+
+int main()
+{
+    int v = 3;
+    squre(++v);
+}
+本意是想求4的平方，但编译器会翻译成(++v)*(++v)，这样v就被加了两次，这个结果肯定不是你想要的！
+
+一句话，带参的宏很容易出问题，特别是针对复合操作（一句话做了不止一件事情）时，bug频出。
+
+解决这个问题的方法是：用函数替换！因为函数调用时，若实参是表达式，总是会先计算这个表达式的值，再去进行调用的，不会出现宏展开时的bug。
+
+template <class T>
+T square(const T& v)
+{
+    return v * v;
+}
+就是一种比较好的解决方案（注意这里v不用加括号了，也不用担心参数被求值多次，而且提供了可靠的作用域限制），但函数调用有一个保存现场和恢复现场的过程（本质是栈的压入和弹出），频繁地调用会导致性能低下，解决方法是在函数前面加上inline关键字，像这样：
+template <class T>
+inline T square(const T& v)
+{
+    return v * v;
+}
+要注意的是
+1.常量，最好是const或enum#define
+函数宏最好以inline代替
+const double PI = 3.14159;
+
+// #define "A String"
+
+/* Its better to use constants instead of #defineS remember!!
+ * Two replacements for the #define above are given below:
+ */
+ 
+const char * const str = "A String";
+
+//Or
+
+#include <string>
+using namespace std;
+
+//For class specific constants, constant static member variables serve the purpose well
+
+class Horse
+{
+//Intentionally left empty
+};
+
+class Stable
+{
+ /* The constant static member 'maxHorses' donot require a definition because:
+  * its a constant static integral,
+  * we are not taking its address like '&maxHorses'
+  */
+ static const int maxHorses = 10;
+ 
+ Horse h[maxHorses];
+};
+
+// Another alternative is known as the enum hack
+// The enum hack is a fundamental technique of TMP ( Item 48 )
+
+class AnotherStable
+{
+
+ enum { maxHorses = 10 };
+ Horse h[maxHorses];
+};
+
+string anotherStr("Another String");
+
+// Alternatives to macros like below are explored
+
+#include <iostream>
+
+template<typename T>
+void f(const T& num)
+{
+ cout << num;
+}
+
+// #define CALL_WITH_MAX(a,b) f((a) > (b) ? (a) : (b))
+
+/* Drawbacks with the macro approach: ( assuming a=5 and b=0 )
+ * we have to remember to parenthesize all arguments in the macro body, 
+ * CALL_WITH_MAX(++a, b); a is incremented twice,
+ * CALL_WITH_MAX(++a, b+10); a is incremented once,
+ * Hence the number of times a is incremented depends on what its being compared with,
+ * There is a way to escape from all this nonsense. Continue reading...
+ */
+ 
+/* We can get all the efficiency of a macro plus all the predictable behavior and type
+ * safety of a regular function by using a template for an inline function
+ */
+
+template<typename T>
+void callWithMax(const T& a, const T& b)
+{
+ f (a > b ? a : b);
+}
+
+int main()
+{
+ int a,b;
+ cin >> a;
+ cin >> b;
+ callWithMax (a,b);
+}
